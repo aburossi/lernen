@@ -1,62 +1,20 @@
 import streamlit as st
 import time
-from st_supabase_connection import SupabaseConnection
-from stqdm import stqdm
-from supabase import Client
 from openai import OpenAI
-import dotenv
-import os
 import json
 from PyPDF2 import PdfReader
-from PIL import Image
-from io import BytesIO
-import pandas as pd
 from fpdf import FPDF
-import base64
-import argon2
 
 # Set page config
 st.set_page_config(page_title="SmartExam Creator", page_icon="📝")
 
 __version__ = "1.1.0"
 
-# Authentication Utilities
-def validate_password(password: str, min_length: int = 8, special_chars: str = "@$!%*?&_^#- ") -> bool:
-    required_chars = [
-        lambda s: any(x.isupper() for x in s),
-        lambda s: any(x.islower() for x in s),
-        lambda s: any(x.isdigit() for x in s),
-        lambda s: any(x in special_chars for x in s),
-    ]
-    return len(password) >= min_length and all(check(password) for check in required_chars)
-
-def login_success(message: str, username: str) -> None:
-    st.success(message)
-    st.session_state["authenticated"] = True
-    st.session_state["username"] = username
-    st.rerun()
-
-class Authenticator(argon2.PasswordHasher):
-    def generate_pwd_hash(self, password: str):
-        return password if password.startswith("$argon2id$") else self.hash(password)
-
-    def verify_password(self, hashed_password, plain_password):
-        try:
-            if self.verify(hashed_password, plain_password):
-                return True
-        except argon2.exceptions.VerificationError:
-            return False
-
-def login_form(**kwargs):
-    # Your login_form function implementation here
-    # (I'm omitting this for brevity, as it's quite long and wasn't modified)
-    pass
-
 # Main app functions
 def stream_llm_response(messages, model_params, api_key):
     client = OpenAI(api_key=api_key)
     response = client.chat.completions.create(
-        model=model_params["model"] if "model" in model_params else "gpt-4o",
+        model=model_params["model"] if "model" in model_params else "gpt-4",
         messages=messages,
         temperature=model_params["temperature"] if "temperature" in model_params else 0.3,
         max_tokens=4096,
@@ -73,7 +31,7 @@ def extract_text_from_pdf(pdf_file):
 def summarize_text(text, api_key):
     prompt = "Please summarize the following text to be concise and to the point:\n\n" + text
     messages = [{"role": "user", "content": prompt}]
-    summary = stream_llm_response(messages, model_params={"model": "gpt-4o-mini", "temperature": 0.3}, api_key=api_key)
+    summary = stream_llm_response(messages, model_params={"model": "gpt-3.5-turbo", "temperature": 0.3}, api_key=api_key)
     return summary
 
 def chunk_text(text, max_tokens=3000):
@@ -102,7 +60,7 @@ def generate_mc_questions(content_text, api_key):
         {"role": "user", "content": prompt},
     ]
     try:
-        response = stream_llm_response(messages, model_params={"model": "gpt-4o-mini", "temperature": 0.3}, api_key=api_key)
+        response = stream_llm_response(messages, model_params={"model": "gpt-3.5-turbo", "temperature": 0.3}, api_key=api_key)
         return response, None
     except Exception as e:
         return None, str(e)
@@ -121,15 +79,6 @@ def parse_generated_questions(response):
         return None, f"JSON parsing error: {e}\n\nFirst 500 characters of response:\n{response[:500]}..."
     except Exception as e:
         return None, f"Unexpected error: {str(e)}\n\nFirst 500 characters of response:\n{response[:500]}..."
-
-def get_question(index, questions):
-    return questions[index]
-
-def initialize_session_state(questions):
-    session_state = st.session_state
-    session_state.current_question_index = 0
-    session_state.quiz_data = get_question(session_state.current_question_index, questions)
-    session_state.correct_answers = 0
 
 class PDF(FPDF):
     def header(self):
@@ -166,73 +115,33 @@ def generate_pdf(questions):
     return pdf.output(dest="S").encode("latin1")
 
 def main():
-    client = login_form()
+    st.title("SmartExam Creator")
     
-    if st.session_state["authenticated"]:
-        if "app_mode" not in st.session_state:
-            st.session_state.app_mode = "Upload PDF & Generate Questions"
-        
-        dotenv.load_dotenv()
-
-        OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-
-        openai_models = [
-            "gpt-4o-mini",
-            "gpt-4-turbo",
-            "gpt-3.5-turbo-16k",
-        ]
-
-        st.sidebar.title("SmartExam Creator")
-        
-        app_mode_options = ["Upload PDF & Generate Questions", "Take the Quiz", "Download as PDF"]
-        st.session_state.app_mode = st.sidebar.selectbox("Choose the app mode", app_mode_options, index=app_mode_options.index(st.session_state.app_mode))
-        
-        st.sidebar.markdown("## About")
-        st.sidebar.video("https://youtu.be/zE3ToJLLSIY")
-        st.sidebar.info(
-            """
-            **SmartExam Creator** is an innovative tool designed to help students and educators alike. 
-            Upload your lecture notes or handwritten notes to create personalized multiple-choice exams.
-            
-            **Story:**
-            This app was developed with the vision of making exam preparation easier and more interactive for students. 
-            Leveraging the power new AI models, it aims to transform traditional study methods into a more engaging and 
-            efficient process. Whether you're a student looking to test your knowledge or an educator seeking to create 
-            customized exams, SmartExam Creator is here to help.
-
-            **What makes SmartExam special ?**
-            Apart from other platforms that require costly subscriptions, this platform is designed from a STEM student
-            for all other students, but let us be honest, we do not have money for Subscriptions. That is why it is completely free for now.
-            I have designed the app as cost efficient as possible, so I can cover all business costs that are coming.  
-            
-            **Features:**
-            - Upload PDF documents
-            - Generate multiple-choice questions
-            - Take interactive quizzes
-            - Download generated exams as PDF
-
-            Built with ❤️ using OpenAI's GPT-4o-mini.
-
-            **Connect with me on [LinkedIn](https://www.linkedin.com/in/laurin-herbst/).**
-            """
-        )
-        
-        if st.session_state.app_mode == "Upload PDF & Generate Questions":
-            pdf_upload_app()
-        elif st.session_state.app_mode == "Take the Quiz":
-            if 'mc_test_generated' in st.session_state and st.session_state.mc_test_generated:
-                if 'generated_questions' in st.session_state and st.session_state.generated_questions:
-                    mc_quiz_app()
-                else:
-                    st.warning("No generated questions found. Please upload a PDF and generate questions first.")
+    if "app_mode" not in st.session_state:
+        st.session_state.app_mode = "Upload PDF & Generate Questions"
+    
+    app_mode_options = ["Upload PDF & Generate Questions", "Take the Quiz", "Download as PDF"]
+    st.session_state.app_mode = st.sidebar.selectbox("Choose the app mode", app_mode_options, index=app_mode_options.index(st.session_state.app_mode))
+    
+    # API Key input
+    api_key = st.text_input("Enter your OpenAI API Key:", type="password")
+    
+    if st.session_state.app_mode == "Upload PDF & Generate Questions":
+        pdf_upload_app(api_key)
+    elif st.session_state.app_mode == "Take the Quiz":
+        if 'mc_test_generated' in st.session_state and st.session_state.mc_test_generated:
+            if 'generated_questions' in st.session_state and st.session_state.generated_questions:
+                mc_quiz_app()
             else:
-                st.warning("Please upload a PDF and generate questions first.")
-        elif st.session_state.app_mode == "Download as PDF":
-            download_pdf_app()
+                st.warning("No generated questions found. Please upload a PDF and generate questions first.")
+        else:
+            st.warning("Please upload a PDF and generate questions first.")
+    elif st.session_state.app_mode == "Download as PDF":
+        download_pdf_app()
 
-def pdf_upload_app():
-    st.title("Upload Your Lecture - Create Your Test Exam")
-    st.subheader("Show Us the Slides and We do the Rest")
+def pdf_upload_app(api_key):
+    st.subheader("Upload Your Lecture - Create Your Test Exam")
+    st.write("Show Us the Slides and We do the Rest")
 
     content_text = ""
     
@@ -240,20 +149,19 @@ def pdf_upload_app():
         st.session_state.messages = []
     
     uploaded_pdf = st.file_uploader("Upload a PDF document", type=["pdf"])
-    if uploaded_pdf:
+    if uploaded_pdf and api_key:
         pdf_text = extract_text_from_pdf(uploaded_pdf)
         content_text += pdf_text
         st.success("PDF content added to the session.")
     
-    if len(content_text) > 3000:
-        content_text = summarize_text(content_text, st.secrets["OPENAI_API_KEY"])
+        if len(content_text) > 3000:
+            content_text = summarize_text(content_text, api_key)
 
-    if content_text:
         st.info("Generating the exam from the uploaded content. It will take just a minute...")
         chunks = chunk_text(content_text)
         questions = []
         for chunk in chunks:
-            response, error = generate_mc_questions(chunk, st.secrets["OPENAI_API_KEY"])
+            response, error = generate_mc_questions(chunk, api_key)
             if error:
                 st.error(f"Error generating questions: {error}")
                 break
@@ -276,6 +184,8 @@ def pdf_upload_app():
             st.rerun()
         else:
             st.error("No questions were generated. Please check the error messages above and try again.")
+    elif not api_key:
+        st.warning("Please enter your OpenAI API key.")
     else:
         st.warning("Please upload a PDF to generate the interactive exam.")
 
@@ -289,8 +199,8 @@ def submit_answer(i, quiz_data):
         st.session_state.feedback[i] = ("Incorrect", quiz_data.get('explanation', 'No explanation available'), quiz_data['correct_answer'])
 
 def mc_quiz_app():
-    st.title('Multiple Choice Game')
-    st.subheader('Here is always one correct answer per question')
+    st.subheader('Multiple Choice Game')
+    st.write('Here is always one correct answer per question')
 
     questions = st.session_state.generated_questions
 
@@ -325,7 +235,7 @@ def mc_quiz_app():
             """, unsafe_allow_html=True)
 
 def download_pdf_app():
-    st.title('Download Your Exam as PDF')
+    st.subheader('Download Your Exam as PDF')
 
     questions = st.session_state.generated_questions
 
