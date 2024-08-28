@@ -49,15 +49,23 @@ def chunk_text(text, max_tokens=3000):
     return chunks
 
 def generate_mc_questions(content_text, api_key):
-    prompt = (
-        "You are a professor in the field of Computational System Biology and should create an exam on the topic of the Input PDF. "
-        "Using the attached lecture slides (please analyze thoroughly), create a Master-level multiple-choice exam. The exam should contain multiple-choice and single-choice questions, "
-        "appropriately marked so that students know how many options to select. Create 30 realistic exam questions covering the entire content. Provide the output in JSON format. "
-        "The JSON should have the structure: [{'question': '...', 'choices': ['...'], 'correct_answer': '...', 'explanation': '...'}, ...]. Ensure the JSON is valid and properly formatted."
+    system_prompt = (
+        "You are a professor in the field of Computational System Biology. Your task is to create a Master-level "
+        "multiple-choice exam based on the provided PDF content. Create 30 realistic exam questions covering the "
+        "entire content. Each question should be directly related to the information in the PDF."
     )
+    user_prompt = (
+        "Using the following content from the uploaded PDF, create multiple-choice and single-choice questions. "
+        "Ensure that each question is based on the information provided in the PDF content. "
+        "Mark questions appropriately so that students know how many options to select. "
+        "Provide the output in JSON format with the following structure: "
+        "[{'question': '...', 'choices': ['...'], 'correct_answer': '...', 'explanation': '...'}, ...]. "
+        "Ensure the JSON is valid and properly formatted.\n\nPDF Content:\n\n"
+    ) + content_text
+
     messages = [
-        {"role": "user", "content": content_text},
-        {"role": "user", "content": prompt},
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
     ]
     try:
         response = stream_llm_response(messages, model_params={"model": "gpt-3.5-turbo", "temperature": 0.3}, api_key=api_key)
@@ -153,9 +161,15 @@ def pdf_upload_app(api_key):
         pdf_text = extract_text_from_pdf(uploaded_pdf)
         content_text += pdf_text
         st.success("PDF content added to the session.")
+        
+        # Display a sample of the extracted text for verification
+        st.subheader("Sample of extracted PDF content:")
+        st.text(content_text[:500] + "...")  # Display first 500 characters
     
         if len(content_text) > 3000:
             content_text = summarize_text(content_text, api_key)
+            st.subheader("Summarized content:")
+            st.text(content_text[:500] + "...")  # Display first 500 characters of summarized content
 
         st.info("Generating the exam from the uploaded content. It will take just a minute...")
         chunks = chunk_text(content_text)
@@ -179,6 +193,10 @@ def pdf_upload_app(api_key):
             st.session_state.mc_test_generated = True
             st.success("The game has been successfully created! Switch the Sidebar Panel to solve the exam.")
             
+            # Display a sample question for verification
+            st.subheader("Sample generated question:")
+            st.json(questions[0])
+            
             time.sleep(2)
             st.session_state.app_mode = "Take the Quiz"
             st.rerun()
@@ -188,6 +206,7 @@ def pdf_upload_app(api_key):
         st.warning("Please enter your OpenAI API key.")
     else:
         st.warning("Please upload a PDF to generate the interactive exam.")
+
 
 def submit_answer(i, quiz_data):
     user_choice = st.session_state[f"user_choice_{i}"]
