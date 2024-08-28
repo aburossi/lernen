@@ -148,8 +148,8 @@ def main():
         download_pdf_app()
 
 def pdf_upload_app(api_key):
-    st.subheader("Upload Your Lecture - Create Your Test Exam")
-    st.write("Show Us the Slides and We do the Rest")
+    st.subheader("Upload Your Content - Create Your Test Exam")
+    st.write("Upload the content and we take care of the rest")
 
     content_text = ""
     
