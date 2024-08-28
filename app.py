@@ -72,15 +72,16 @@ def parse_generated_questions(response):
         json_start = response.find('[')
         json_end = response.rfind(']') + 1
         if json_start == -1 or json_end == 0:
-            return None, "No JSON data found in the response"
+            return None, f"No JSON data found in the response. First 500 characters of response:\n{response[:500]}..."
         json_str = response[json_start:json_end]
 
         questions = json.loads(json_str)
         return questions, None
     except json.JSONDecodeError as e:
-        return None, f"JSON parsing error: {e}\n\nResponse from OpenAI:\n{response[:500]}..."
+        return None, f"JSON parsing error: {e}\n\nFirst 500 characters of response:\n{response[:500]}..."
     except Exception as e:
-        return None, f"Unexpected error: {str(e)}"
+        return None, f"Unexpected error: {str(e)}\n\nFirst 500 characters of response:\n{response[:500]}..."
+
 
 class PDF(FPDF):
     def header(self):
@@ -171,6 +172,8 @@ def pdf_upload_app(api_key):
         parsed_questions, error_message = parse_generated_questions(response)
         if error_message:
             st.error(error_message)
+            st.write("Full response:")
+            st.text(response)
             return
         if parsed_questions:
             questions.extend(parsed_questions)
@@ -187,6 +190,8 @@ def pdf_upload_app(api_key):
         st.rerun()
     else:
         st.error("No questions were generated. Please try again or check your input content.")
+        st.write("Full response:")
+        st.text(response)
 
 
 def submit_answer(i, quiz_data):
