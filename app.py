@@ -50,9 +50,13 @@ def chunk_text(text, max_tokens=3000):
 
 def generate_mc_questions(content_text, api_key):
     system_prompt = (
-        "You are a professor in the field of Computational System Biology. Your task is to create a Master-level "
-        "multiple-choice exam based on the provided PDF content. Create 30 realistic exam questions covering the "
-        "entire content. Each question should be directly related to the information in the PDF."
+        "Sie sind ein Lehrer für Allgemeinbildung und sollen eine Prüfung zum Thema des eingereichten PDFs erstellen. "
+        "Verwenden Sie den Inhalt des PDFs (bitte gründlich analysieren) und erstellen Sie eine Multiple-Choice-Prüfung auf Oberstufenniveau. "
+        "Die Prüfung soll sowohl Fragen mit einer richtigen Antwort als auch Fragen mit mehreren richtigen Antworten enthalten. "
+        "Kennzeichnen Sie die Fragen entsprechend, damit die Schüler wissen, wie viele Optionen sie auswählen sollen. "
+        "Erstellen Sie 30 realistische Prüfungsfragen, die den gesamten Inhalt abdecken. Geben Sie die Ausgabe im JSON-Format an. "
+        "Das JSON sollte folgende Struktur haben: [{'question': '...', 'choices': ['...'], 'correct_answer': '...', 'explanation': '...'}, ...]. "
+        "Stellen Sie sicher, dass das JSON gültig und korrekt formatiert ist."
     )
     user_prompt = (
         "Using the following content from the uploaded PDF, create multiple-choice and single-choice questions. "
@@ -68,7 +72,7 @@ def generate_mc_questions(content_text, api_key):
         {"role": "user", "content": user_prompt},
     ]
     try:
-        response = stream_llm_response(messages, model_params={"model": "gpt-3.5-turbo", "temperature": 0.3}, api_key=api_key)
+        response = stream_llm_response(messages, model_params={"model": "gpt-4o-mini", "temperature": 0.5}, api_key=api_key)
         return response, None
     except Exception as e:
         return None, str(e)
