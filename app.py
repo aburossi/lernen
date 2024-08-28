@@ -6,9 +6,9 @@ from PyPDF2 import PdfReader
 from fpdf import FPDF
 
 # Set page config
-st.set_page_config(page_title="SmartExam Creator", page_icon="📝")
+st.set_page_config(page_title="Exam Creator", page_icon="📝")
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 # Main app functions
 def stream_llm_response(messages, model_params, api_key):
@@ -27,8 +27,6 @@ def extract_text_from_pdf(pdf_file):
     for page in pdf_reader.pages:
         text += page.extract_text() + "\n"
     return text
-
-
 
 def chunk_text(text, max_tokens=3000):
     sentences = text.split('. ')
@@ -50,7 +48,8 @@ def generate_mc_questions(content_text, api_key):
         "Verwenden Sie den Inhalt des PDFs (bitte gründlich analysieren) und erstellen Sie eine Multiple-Choice-Prüfung auf Oberstufenniveau. "
         "Die Prüfung soll sowohl Fragen mit einer richtigen Antwort als auch Fragen mit mehreren richtigen Antworten enthalten. "
         "Kennzeichnen Sie die Fragen entsprechend, damit die Schüler wissen, wie viele Optionen sie auswählen sollen. "
-        "Erstellen Sie 30 realistische Prüfungsfragen, die den gesamten Inhalt abdecken. Geben Sie die Ausgabe im JSON-Format an. "
+        "Erstellen Sie so viele Prüfungsfragen, wie nötig sind, um den gesamten Inhalt abzudecken, aber maximal 20 Fragen. "
+        "Geben Sie die Ausgabe im JSON-Format an. "
         "Das JSON sollte folgende Struktur haben: [{'question': '...', 'choices': ['...'], 'correct_answer': '...', 'explanation': '...'}, ...]. "
         "Stellen Sie sicher, dass das JSON gültig und korrekt formatiert ist."
     )
@@ -58,6 +57,7 @@ def generate_mc_questions(content_text, api_key):
         "Using the following content from the uploaded PDF, create multiple-choice and single-choice questions. "
         "Ensure that each question is based on the information provided in the PDF content. "
         "Mark questions appropriately so that students know how many options to select. "
+        "Create as many questions as necessary to cover the entire content, but no more than 20 questions. "
         "Provide the output in JSON format with the following structure: "
         "[{'question': '...', 'choices': ['...'], 'correct_answer': '...', 'explanation': '...'}, ...]. "
         "Ensure the JSON is valid and properly formatted.\n\nPDF Content:\n\n"
@@ -165,11 +165,6 @@ def pdf_upload_app(api_key):
         # Display a sample of the extracted text for verification
         st.subheader("Sample of extracted PDF content:")
         st.text(content_text[:500] + "...")  # Display first 500 characters
-    
-        if len(content_text) > 3000:
-            content_text = summarize_text(content_text, api_key)
-            st.subheader("Summarized content:")
-            st.text(content_text[:500] + "...")  # Display first 500 characters of summarized content
 
         st.info("Generating the exam from the uploaded content. It will take just a minute...")
         chunks = chunk_text(content_text)
@@ -187,11 +182,14 @@ def pdf_upload_app(api_key):
                 break
             if parsed_questions:
                 questions.extend(parsed_questions)
+                if len(questions) >= 20:
+                    questions = questions[:20]  # Limit to 20 questions
+                    break
         if questions:
             st.session_state.generated_questions = questions
             st.session_state.content_text = content_text
             st.session_state.mc_test_generated = True
-            st.success("The game has been successfully created! Switch the Sidebar Panel to solve the exam.")
+            st.success(f"The exam has been successfully created with {len(questions)} questions! Switch the Sidebar Panel to take the exam.")
             
             # Display a sample question for verification
             st.subheader("Sample generated question:")
@@ -207,7 +205,6 @@ def pdf_upload_app(api_key):
     else:
         st.warning("Please upload a PDF to generate the interactive exam.")
 
-
 def submit_answer(i, quiz_data):
     user_choice = st.session_state[f"user_choice_{i}"]
     st.session_state.answers[i] = user_choice
@@ -218,8 +215,8 @@ def submit_answer(i, quiz_data):
         st.session_state.feedback[i] = ("Incorrect", quiz_data.get('explanation', 'No explanation available'), quiz_data['correct_answer'])
 
 def mc_quiz_app():
-    st.subheader('Multiple Choice Game')
-    st.write('Here is always one correct answer per question')
+    st.subheader('Multiple Choice Exam')
+    st.write('There is always one correct answer per question')
 
     questions = st.session_state.generated_questions
 
