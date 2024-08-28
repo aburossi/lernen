@@ -61,22 +61,26 @@ def generate_mc_questions(content_text, api_key):
         {"role": "user", "content": content_text},
         {"role": "user", "content": prompt},
     ]
-    response = stream_llm_response(messages, model_params={"model": "gpt-4", "temperature": 0.3}, api_key=api_key)
-    return response
+    try:
+        response = stream_llm_response(messages, model_params={"model": "gpt-4", "temperature": 0.3}, api_key=api_key)
+        return response
+    except Exception as e:
+        return f"Error generating questions: {str(e)}"
 
 def parse_generated_questions(response):
     try:
         json_start = response.find('[')
         json_end = response.rfind(']') + 1
+        if json_start == -1 or json_end == 0:
+            return None, "No JSON data found in the response"
         json_str = response[json_start:json_end]
 
         questions = json.loads(json_str)
-        return questions
+        return questions, None
     except json.JSONDecodeError as e:
-        st.error(f"JSON parsing error: {e}")
-        st.error("Response from OpenAI:")
-        st.text(response)
-        return None
+        return None, f"JSON parsing error: {e}\n\nResponse from OpenAI:\n{response[:500]}..."
+    except Exception as e:
+        return None, f"Unexpected error: {str(e)}"
 
 class PDF(FPDF):
     def header(self):
@@ -156,27 +160,33 @@ def pdf_upload_app(api_key):
         if len(content_text) > 3000:
             content_text = summarize_text(content_text, api_key)
 
-        st.info("Generating the exam from the uploaded content. It will take just a minute...")
-        chunks = chunk_text(content_text)
-        questions = []
-        for chunk in chunks:
-            response = generate_mc_questions(chunk, api_key)
-            parsed_questions = parse_generated_questions(response)
-            if parsed_questions:
-                questions.extend(parsed_questions)
-        if questions:
-            st.session_state.generated_questions = questions
-            st.session_state.content_text = content_text
-            st.session_state.mc_test_generated = True
-            st.success("The game has been successfully created! Switch the Sidebar Panel to solve the exam.")
-            
-            # Wait 2 seconds and switch to quiz mode
-            time.sleep(2)
-            st.session_state.app_mode = "Take the Quiz"
-            st.rerun()
-            
-        else:
-            st.error("Failed to parse the generated questions. Please check the OpenAI response.")
+    st.info("Generating the exam from the uploaded content. It will take just a minute...")
+    chunks = chunk_text(content_text)
+    questions = []
+    for chunk in chunks:
+        response = generate_mc_questions(chunk, api_key)
+        if response.startswith("Error generating questions"):
+            st.error(response)
+            return
+        parsed_questions, error_message = parse_generated_questions(response)
+        if error_message:
+            st.error(error_message)
+            return
+        if parsed_questions:
+            questions.extend(parsed_questions)
+    
+    if questions:
+        st.session_state.generated_questions = questions
+        st.session_state.content_text = content_text
+        st.session_state.mc_test_generated = True
+        st.success("The game has been successfully created! Switch the Sidebar Panel to solve the exam.")
+        
+        # Wait 2 seconds and switch to quiz mode
+        time.sleep(2)
+        st.session_state.app_mode = "Take the Quiz"
+        st.rerun()
+    else:
+        st.error("No questions were generated. Please try again or check your input content.")
     elif not api_key:
         st.warning("Please enter your OpenAI API key.")
     else:
