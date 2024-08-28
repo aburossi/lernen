@@ -187,10 +187,7 @@ def pdf_upload_app(api_key):
         st.rerun()
     else:
         st.error("No questions were generated. Please try again or check your input content.")
-    elif not api_key:
-        st.warning("Please enter your OpenAI API key.")
-    else:
-        st.warning("Please upload a PDF to generate the interactive exam.")
+
 
 def submit_answer(i, quiz_data):
     user_choice = st.session_state[f"user_choice_{i}"]
