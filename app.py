@@ -28,11 +28,7 @@ def extract_text_from_pdf(pdf_file):
         text += page.extract_text() + "\n"
     return text
 
-def summarize_text(text, api_key):
-    prompt = "Please summarize the following text to be concise and to the point:\n\n" + text
-    messages = [{"role": "user", "content": prompt}]
-    summary = stream_llm_response(messages, model_params={"model": "gpt-3.5-turbo", "temperature": 0.3}, api_key=api_key)
-    return summary
+
 
 def chunk_text(text, max_tokens=3000):
     sentences = text.split('. ')
@@ -127,7 +123,7 @@ def generate_pdf(questions):
     return pdf.output(dest="S").encode("latin1")
 
 def main():
-    st.title("SmartExam Creator")
+    st.title("Exam Creator")
     
     if "app_mode" not in st.session_state:
         st.session_state.app_mode = "Upload PDF & Generate Questions"
