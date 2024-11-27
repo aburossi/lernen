@@ -123,17 +123,28 @@ def generate_pdf(questions):
     return pdf.output(dest="S").encode("latin1")
 
 def main():
-    st.title("Exam Creator")
+    # Set up the sidebar
+    st.sidebar.title("Exam Creator Sidebar")
+    st.sidebar.write("Navigate through the app and access additional resources here.")
     
-    if "app_mode" not in st.session_state:
-        st.session_state.app_mode = "Upload PDF & Generate Questions"
-    
+    # Dropdown for app mode
     app_mode_options = ["Upload PDF & Generate Questions", "Take the Quiz", "Download as PDF"]
-    st.session_state.app_mode = st.sidebar.selectbox("Choose the app mode", app_mode_options, index=app_mode_options.index(st.session_state.app_mode))
+    if "app_mode" not in st.session_state:
+        st.session_state.app_mode = app_mode_options[0]  # Default to the first option
+    st.session_state.app_mode = st.sidebar.selectbox("Choose the app mode", app_mode_options)
+
+    # Embed the video link
+    st.sidebar.markdown("[How to get your OpenAI API Key](https://youtu.be/NsTAjBdHb1k)")
     
+    # License and contact information
+    st.sidebar.subheader("License & Contact")
+    st.sidebar.write("This application is licensed for personal and educational use.")
+    st.sidebar.markdown("For inquiries, email: [pietro.rossi@bbw.ch](mailto:pietro.rossi@bbw.ch)")
+
     # API Key input
     api_key = st.text_input("Enter your OpenAI API Key:", type="password")
     
+    # Load the appropriate app mode
     if st.session_state.app_mode == "Upload PDF & Generate Questions":
         pdf_upload_app(api_key)
     elif st.session_state.app_mode == "Take the Quiz":
@@ -146,6 +157,7 @@ def main():
             st.warning("Please upload a PDF and generate questions first.")
     elif st.session_state.app_mode == "Download as PDF":
         download_pdf_app()
+
 
 def pdf_upload_app(api_key):
     st.subheader("Upload Your Content - Create Your Test Exam")
@@ -271,19 +283,6 @@ def download_pdf_app():
             file_name="generated_exam.pdf",
             mime="application/pdf"
         )
-
-    # Sidebar modifications
-    st.sidebar.title("Exam Creator Sidebar")
-    st.sidebar.write("Navigate through the app and access additional resources here.")
-    
-    # Embed the video link
-    st.sidebar.markdown("[How to get your OpenAI API Key](https://youtu.be/NsTAjBdHb1k)")
-    
-    # License and contact information
-    st.sidebar.subheader("License & Contact")
-    st.sidebar.write("This application is licensed for personal and educational use.")
-    st.sidebar.markdown("For inquiries, email: [pietro.rossi@bbw.ch](mailto:pietro.rossi@bbw.ch)")
-
 
 if __name__ == '__main__':
     main()
