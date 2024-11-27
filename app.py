@@ -4,6 +4,8 @@ from openai import OpenAI
 import json
 from PyPDF2 import PdfReader
 from fpdf import FPDF
+from io import BytesIO
+from docx import Document
 
 # Set page config
 st.set_page_config(page_title="Exam Creator", page_icon="📝")
@@ -142,6 +144,43 @@ def generate_pdf(questions):
 
     return pdf.output(dest="S").encode("latin1")
 
+def generate_docx(questions):
+    doc = Document()
+
+    # Part 1: Questions without solutions
+    doc.add_heading('Exam - Questions Only (No Solutions)', level=1)
+
+    for i, q in enumerate(questions):
+        question = f"Q{i+1}: {q['question']}"
+        doc.add_heading(question, level=2)
+
+        # Add choices
+        for j, choice in enumerate(q['choices']):
+            doc.add_paragraph(f"{chr(65+j)}. {choice}")
+
+    # Add a page break
+    doc.add_page_break()
+
+    # Part 2: Questions with solutions
+    doc.add_heading('Exam - Questions with Solutions', level=1)
+
+    for i, q in enumerate(questions):
+        question = f"Q{i+1}: {q['question']}"
+        doc.add_heading(question, level=2)
+
+        # Add choices
+        for j, choice in enumerate(q['choices']):
+            doc.add_paragraph(f"{chr(65+j)}. {choice}")
+
+        # Add correct answer and explanation
+        doc.add_paragraph(f"Correct answer: {q['correct_answer']}")
+        doc.add_paragraph(f"Explanation: {q['explanation']}")
+
+    # Save the document to a BytesIO object
+    file_stream = BytesIO()
+    doc.save(file_stream)
+    file_stream.seek(0)  # Reset stream position for reading
+    return file_stream.getvalue()
 
 def main():
     # Set up the sidebar
@@ -262,18 +301,34 @@ def mc_quiz_app():
     st.subheader("Multiple Choice Exam")
     st.write("There is always one correct answer per question.")
 
-    # Add a button to download the PDF at the top of the page
-    if st.button("Download the exam as PDF"):
-        if 'generated_questions' in st.session_state:
-            pdf_bytes = generate_pdf(st.session_state.generated_questions)
-            st.download_button(
-                label="Download PDF",
-                data=pdf_bytes,
-                file_name="generated_exam.pdf",
-                mime="application/pdf"
-            )
-        else:
-            st.warning("No questions are available for download.")
+    # Buttons for downloading PDF and DOCX
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("Download the exam as PDF"):
+            if 'generated_questions' in st.session_state:
+                pdf_bytes = generate_pdf(st.session_state.generated_questions)
+                st.download_button(
+                    label="Download PDF",
+                    data=pdf_bytes,
+                    file_name="generated_exam.pdf",
+                    mime="application/pdf"
+                )
+            else:
+                st.warning("No questions are available for download.")
+
+    with col2:
+        if st.button("Download the exam as DOCX"):
+            if 'generated_questions' in st.session_state:
+                docx_bytes = generate_docx(st.session_state.generated_questions)
+                st.download_button(
+                    label="Download DOCX",
+                    data=docx_bytes,
+                    file_name="generated_exam.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
+            else:
+                st.warning("No questions are available for download.")
 
     questions = st.session_state.generated_questions
 
