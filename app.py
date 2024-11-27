@@ -105,13 +105,31 @@ class PDF(FPDF):
 
 def generate_pdf(questions):
     pdf = PDF()
+
+    # Part 1: Questions without solutions
     pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Exam - Questions Only (No Solutions)", 0, 1, "C")
+    pdf.ln(10)
 
     for i, q in enumerate(questions):
         question = f"Q{i+1}: {q['question']}"
         pdf.chapter_title(question)
 
-        choices = "\n".join(q['choices'])
+        choices = "\n".join([f"{chr(65+j)}. {choice}" for j, choice in enumerate(q['choices'])])
+        pdf.chapter_body(choices)
+
+    # Part 2: Questions with solutions
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Exam - Questions with Solutions", 0, 1, "C")
+    pdf.ln(10)
+
+    for i, q in enumerate(questions):
+        question = f"Q{i+1}: {q['question']}"
+        pdf.chapter_title(question)
+
+        choices = "\n".join([f"{chr(65+j)}. {choice}" for j, choice in enumerate(q['choices'])])
         pdf.chapter_body(choices)
 
         correct_answer = f"Correct answer: {q['correct_answer']}"
