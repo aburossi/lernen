@@ -238,8 +238,21 @@ def submit_answer(i, quiz_data):
         st.session_state.feedback[i] = ("Incorrect", quiz_data.get('explanation', 'No explanation available'), quiz_data['correct_answer'])
 
 def mc_quiz_app():
-    st.subheader('Multiple Choice Exam')
-    st.write('There is always one correct answer per question')
+    st.subheader("Multiple Choice Exam")
+    st.write("There is always one correct answer per question.")
+
+    # Add a button to download the PDF at the top of the page
+    if st.button("Download the exam as PDF"):
+        if 'generated_questions' in st.session_state:
+            pdf_bytes = generate_pdf(st.session_state.generated_questions)
+            st.download_button(
+                label="Download PDF",
+                data=pdf_bytes,
+                file_name="generated_exam.pdf",
+                mime="application/pdf"
+            )
+        else:
+            st.warning("No questions are available for download.")
 
     questions = st.session_state.generated_questions
 
@@ -272,6 +285,7 @@ def mc_quiz_app():
                     <h1>Your Score: {score}/{total_questions}</h1>
                 </div>
             """, unsafe_allow_html=True)
+
 
 def download_pdf_app():
     st.subheader('Download Your Exam as PDF')
