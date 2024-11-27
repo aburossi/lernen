@@ -132,13 +132,19 @@ def main():
     st.sidebar.write("📜 License: This software is licensed under [MIT License](https://opensource.org/licenses/MIT)")
     st.sidebar.write("📧 Contact: [pietro.rossi@bbw.ch](mailto:pietro.rossi@bbw.ch)")
 
+    # Sidebar navigation buttons
+    if st.sidebar.button("Home"):
+        st.session_state.app_mode = "Home"
+    if st.sidebar.button("Take the Quiz"):
+        st.session_state.app_mode = "Take the Quiz"
+    if st.sidebar.button("Download as PDF"):
+        st.session_state.app_mode = "Download as PDF"
+
+    # Set default app mode
     if "app_mode" not in st.session_state:
         st.session_state.app_mode = "Home"
-    
-    app_mode_options = ["Home", "Take the Quiz", "Download as PDF"]
-    st.session_state.app_mode = st.sidebar.radio("Choose an option", app_mode_options, index=app_mode_options.index(st.session_state.app_mode))
 
-    # API Key input for Home
+    # Navigation logic
     if st.session_state.app_mode == "Home":
         st.subheader("Home")
         st.text_input("Enter your OpenAI API Key:", type="password", key="api_key")
@@ -162,6 +168,10 @@ def main():
             download_pdf_app()
         else:
             st.warning("No exam generated. Please return to Home, upload a PDF, and generate questions first.")
+
+if __name__ == '__main__':
+    main()
+
 
 def pdf_upload_app(api_key):
     st.subheader("Upload Your Content - Create Your Test Exam")
