@@ -116,6 +116,7 @@ def generate_pdf(questions):
         question = f"Q{i+1}: {q['question']}"
         pdf.chapter_title(question)
 
+        # Correctly format the choices
         choices = "\n".join([f"{chr(65+j)}. {choice}" for j, choice in enumerate(q['choices'])])
         pdf.chapter_body(choices)
 
@@ -129,6 +130,7 @@ def generate_pdf(questions):
         question = f"Q{i+1}: {q['question']}"
         pdf.chapter_title(question)
 
+        # Correctly format the choices
         choices = "\n".join([f"{chr(65+j)}. {choice}" for j, choice in enumerate(q['choices'])])
         pdf.chapter_body(choices)
 
@@ -139,6 +141,7 @@ def generate_pdf(questions):
         pdf.chapter_body(explanation)
 
     return pdf.output(dest="S").encode("latin1")
+
 
 def main():
     # Set up the sidebar
