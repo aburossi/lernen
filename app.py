@@ -41,7 +41,7 @@ def chunk_text(text, max_tokens=3000):
         chunks.append(chunk)
     return chunks
 
-def generate_mc_questions(content_text, api_key):
+def generate_mc_questions(content_text, api_key, model_key):
     system_prompt = (
         "Sie sind ein Lehrer für Allgemeinbildung und sollen eine Prüfung zum Thema des eingereichten PDFs erstellen. "
         "Verwenden Sie den Inhalt des PDFs (bitte gründlich analysieren) und erstellen Sie eine Multiple-Choice-Prüfung auf Oberstufenniveau. "
@@ -67,15 +67,11 @@ def generate_mc_questions(content_text, api_key):
         {"role": "user", "content": user_prompt},
     ]
     try:
-        response = stream_llm_response(
-            messages,
-            model_params={"model": selected_model_key, "temperature": 0.5},
-            api_key=api_key
-        )
-
+        response = stream_llm_response(messages, model_params={"model": model_key, "temperature": 0.5}, api_key=api_key)
         return response, None
     except Exception as e:
         return None, str(e)
+
 
 def parse_generated_questions(response):
     try:
@@ -130,7 +126,7 @@ def main():
     # Set up the sidebar
     st.sidebar.title("Exam Creator Sidebar")
     st.sidebar.write("Navigate through the app and access additional resources here.")
-    
+
     # Dropdown for app mode
     app_mode_options = ["Upload PDF & Generate Questions", "Take the Quiz", "Download as PDF"]
     if "app_mode" not in st.session_state:
@@ -139,7 +135,7 @@ def main():
 
     # Embed the video link
     st.sidebar.markdown("[How to get your OpenAI API Key](https://youtu.be/NsTAjBdHb1k)")
-    
+
     # License and contact information
     st.sidebar.subheader("License & Contact")
     st.sidebar.write("This application is licensed for personal and educational use.")
@@ -147,7 +143,7 @@ def main():
 
     # API Key input
     api_key = st.text_input("Enter your OpenAI API Key:", type="password")
-    
+
     # Model selection
     model_options = {
         "gpt-4o-mini (cheapest, fastest)": "gpt-4o-mini",
@@ -159,10 +155,10 @@ def main():
         index=0  # Default to "gpt-4o-mini (cheapest, fastest)"
     )
     selected_model_key = model_options[selected_model]
-    
+
     # Load the appropriate app mode
     if st.session_state.app_mode == "Upload PDF & Generate Questions":
-        pdf_upload_app(api_key)
+        pdf_upload_app(api_key, selected_model_key)
     elif st.session_state.app_mode == "Take the Quiz":
         if 'mc_test_generated' in st.session_state and st.session_state.mc_test_generated:
             if 'generated_questions' in st.session_state and st.session_state.generated_questions:
@@ -174,22 +170,21 @@ def main():
     elif st.session_state.app_mode == "Download as PDF":
         download_pdf_app()
 
-
-def pdf_upload_app(api_key):
+def pdf_upload_app(api_key, selected_model_key):
     st.subheader("Upload Your Content - Create Your Test Exam")
     st.write("Upload the content and we take care of the rest")
 
     content_text = ""
-    
+
     if 'messages' not in st.session_state:
         st.session_state.messages = []
-    
+
     uploaded_pdf = st.file_uploader("Upload a PDF document", type=["pdf"])
     if uploaded_pdf and api_key:
         pdf_text = extract_text_from_pdf(uploaded_pdf)
         content_text += pdf_text
         st.success("PDF content added to the session.")
-        
+
         # Display a sample of the extracted text for verification
         st.subheader("Sample of extracted PDF content:")
         st.text(content_text[:500] + "...")  # Display first 500 characters
@@ -198,7 +193,7 @@ def pdf_upload_app(api_key):
         chunks = chunk_text(content_text)
         questions = []
         for chunk in chunks:
-            response, error = generate_mc_questions(chunk, api_key)
+            response, error = generate_mc_questions(chunk, api_key, selected_model_key)
             if error:
                 st.error(f"Error generating questions: {error}")
                 break
@@ -218,11 +213,11 @@ def pdf_upload_app(api_key):
             st.session_state.content_text = content_text
             st.session_state.mc_test_generated = True
             st.success(f"The exam has been successfully created with {len(questions)} questions! Switch the Sidebar Panel to take the exam.")
-            
+
             # Display a sample question for verification
             st.subheader("Sample generated question:")
             st.json(questions[0])
-            
+
             time.sleep(2)
             st.session_state.app_mode = "Take the Quiz"
             st.rerun()
