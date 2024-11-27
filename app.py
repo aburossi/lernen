@@ -122,7 +122,6 @@ def generate_pdf(questions):
 
     return pdf.output(dest="S").encode("latin1")
 
-# Modified Sidebar for the Home Button, Video, License, and Contact Info
 def main():
     st.title("Exam Creator")
 
@@ -132,19 +131,19 @@ def main():
     st.sidebar.write("📜 License: This software is licensed under [MIT License](https://opensource.org/licenses/MIT)")
     st.sidebar.write("📧 Contact: [pietro.rossi@bbw.ch](mailto:pietro.rossi@bbw.ch)")
 
-    # Sidebar navigation buttons
-    if st.sidebar.button("Home"):
-        st.session_state.app_mode = "Home"
-    if st.sidebar.button("Take the Quiz"):
-        st.session_state.app_mode = "Take the Quiz"
-    if st.sidebar.button("Download as PDF"):
-        st.session_state.app_mode = "Download as PDF"
-
-    # Set default app mode
+    # Initialize app_mode if not already set
     if "app_mode" not in st.session_state:
         st.session_state.app_mode = "Home"
 
-    # Navigation logic
+    # Sidebar navigation buttons with unique keys
+    if st.sidebar.button("Home", key="home_button"):
+        st.session_state.app_mode = "Home"
+    if st.sidebar.button("Take the Quiz", key="quiz_button"):
+        st.session_state.app_mode = "Take the Quiz"
+    if st.sidebar.button("Download as PDF", key="pdf_button"):
+        st.session_state.app_mode = "Download as PDF"
+
+    # Navigation logic based on app_mode
     if st.session_state.app_mode == "Home":
         st.subheader("Home")
         st.text_input("Enter your OpenAI API Key:", type="password", key="api_key")
@@ -168,6 +167,7 @@ def main():
             download_pdf_app()
         else:
             st.warning("No exam generated. Please return to Home, upload a PDF, and generate questions first.")
+
 
 if __name__ == '__main__':
     main()
