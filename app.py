@@ -122,30 +122,46 @@ def generate_pdf(questions):
 
     return pdf.output(dest="S").encode("latin1")
 
+# Modified Sidebar for the Home Button, Video, License, and Contact Info
 def main():
     st.title("Exam Creator")
-    
+
+    # Sidebar setup
+    st.sidebar.title("Exam Creator")
+    st.sidebar.write("[🎥 How to get your API Key](https://youtu.be/NsTAjBdHb1k)")
+    st.sidebar.write("📜 License: This software is licensed under [MIT License](https://opensource.org/licenses/MIT)")
+    st.sidebar.write("📧 Contact: [pietro.rossi@bbw.ch](mailto:pietro.rossi@bbw.ch)")
+
     if "app_mode" not in st.session_state:
-        st.session_state.app_mode = "Upload PDF & Generate Questions"
+        st.session_state.app_mode = "Home"
     
-    app_mode_options = ["Upload PDF & Generate Questions", "Take the Quiz", "Download as PDF"]
-    st.session_state.app_mode = st.sidebar.selectbox("Choose the app mode", app_mode_options, index=app_mode_options.index(st.session_state.app_mode))
-    
-    # API Key input
-    api_key = st.text_input("Enter your OpenAI API Key:", type="password")
-    
-    if st.session_state.app_mode == "Upload PDF & Generate Questions":
-        pdf_upload_app(api_key)
+    app_mode_options = ["Home", "Take the Quiz", "Download as PDF"]
+    st.session_state.app_mode = st.sidebar.radio("Choose an option", app_mode_options, index=app_mode_options.index(st.session_state.app_mode))
+
+    # API Key input for Home
+    if st.session_state.app_mode == "Home":
+        st.subheader("Home")
+        st.text_input("Enter your OpenAI API Key:", type="password", key="api_key")
+
+        if "api_key" in st.session_state and st.session_state.api_key:
+            pdf_upload_app(st.session_state.api_key)
+        else:
+            st.info("Please enter your OpenAI API Key to proceed.")
+
     elif st.session_state.app_mode == "Take the Quiz":
         if 'mc_test_generated' in st.session_state and st.session_state.mc_test_generated:
             if 'generated_questions' in st.session_state and st.session_state.generated_questions:
                 mc_quiz_app()
             else:
-                st.warning("No generated questions found. Please upload a PDF and generate questions first.")
+                st.warning("No generated questions found. Please return to Home, upload a PDF, and generate questions first.")
         else:
             st.warning("Please upload a PDF and generate questions first.")
+
     elif st.session_state.app_mode == "Download as PDF":
-        download_pdf_app()
+        if 'mc_test_generated' in st.session_state and st.session_state.mc_test_generated:
+            download_pdf_app()
+        else:
+            st.warning("No exam generated. Please return to Home, upload a PDF, and generate questions first.")
 
 def pdf_upload_app(api_key):
     st.subheader("Upload Your Content - Create Your Test Exam")
