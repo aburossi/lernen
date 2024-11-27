@@ -6,6 +6,7 @@ from PyPDF2 import PdfReader
 from fpdf import FPDF
 from io import BytesIO
 from docx import Document
+from streamlit_cookies_manager import EncryptedCookieManager
 
 # Set page config
 st.set_page_config(page_title="Exam Creator", page_icon="📝")
@@ -201,8 +202,46 @@ def main():
     st.sidebar.write("This application is licensed for personal and educational use.")
     st.sidebar.markdown("For inquiries, email: [pietro.rossi@bbw.ch](mailto:pietro.rossi@bbw.ch)")
 
-    # API Key input
-    api_key = st.text_input("Enter your OpenAI API Key:", type="password")
+    # Initialize the cookie manager
+    cookies = EncryptedCookieManager(prefix="exam_creator_app")  # Prefix to avoid conflicts
+    if not cookies.ready():
+        st.stop()
+    
+    # API Key input and cookie management
+    if "api_key" not in st.session_state:
+        st.session_state.api_key = cookies.get("api_key", "")
+    
+    api_key_input = st.text_input(
+        "Enter your OpenAI API Key:",
+        value=st.session_state.api_key,
+        type="password",
+        help="Your API key will be saved in your browser securely if you choose to remember it."
+    )
+    
+    # Save API Key in session state
+    if api_key_input:
+        st.session_state.api_key = api_key_input
+    
+    # Save or Clear API Key
+    col1, col2 = st.sidebar.columns(2)
+    with col1:
+        if st.button("Remember API Key"):
+            cookies["api_key"] = st.session_state.api_key
+            cookies.save()  # Save the cookie
+            st.success("API Key saved to your browser.")
+    with col2:
+        if st.button("Forget API Key"):
+            if "api_key" in cookies:
+                del cookies["api_key"]
+                cookies.save()  # Save changes to delete the cookie
+                st.session_state.api_key = ""
+                st.success("API Key removed from your browser.")
+    
+    # Use the API key in the app
+    api_key = st.session_state.api_key
+    if not api_key:
+        st.warning("Please provide your OpenAI API key to proceed.")
+
 
     # Model selection
     model_options = {
