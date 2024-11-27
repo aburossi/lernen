@@ -10,14 +10,13 @@ st.set_page_config(page_title="Exam Creator", page_icon="📝")
 
 __version__ = "1.2.0"
 
-# Main app functions
 def stream_llm_response(messages, model_params, api_key):
     client = OpenAI(api_key=api_key)
     response = client.chat.completions.create(
-        model=model_params["model"] if "model" in model_params else "gpt-4o-mini",
+        model=model_params["model"],  # Use the passed model
         messages=messages,
-        temperature=model_params["temperature"] if "temperature" in model_params else 0.5,
-        max_tokens=10096,
+        temperature=model_params.get("temperature", 0.5),
+        max_tokens=15096,
     )
     return response.choices[0].message.content
 
@@ -68,7 +67,12 @@ def generate_mc_questions(content_text, api_key):
         {"role": "user", "content": user_prompt},
     ]
     try:
-        response = stream_llm_response(messages, model_params={"model": "gpt-4o-mini", "temperature": 0.5}, api_key=api_key)
+        response = stream_llm_response(
+            messages,
+            model_params={"model": selected_model_key, "temperature": 0.5},
+            api_key=api_key
+        )
+
         return response, None
     except Exception as e:
         return None, str(e)
@@ -143,6 +147,18 @@ def main():
 
     # API Key input
     api_key = st.text_input("Enter your OpenAI API Key:", type="password")
+    
+    # Model selection
+    model_options = {
+        "gpt-4o-mini (cheapest, fastest)": "gpt-4o-mini",
+        "gpt-4o (better output)": "gpt-4o"
+    }
+    selected_model = st.sidebar.radio(
+        "Select GPT model",
+        options=list(model_options.keys()),
+        index=0  # Default to "gpt-4o-mini (cheapest, fastest)"
+    )
+    selected_model_key = model_options[selected_model]
     
     # Load the appropriate app mode
     if st.session_state.app_mode == "Upload PDF & Generate Questions":
